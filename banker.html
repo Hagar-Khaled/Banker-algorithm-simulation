@@ -1,0 +1,292 @@
+<!DOCTYPE html>  
+<html lang="en">  
+<head>  
+<meta charset="UTF-8" />  
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />  
+<title>Resource Allocation Safety Algorithm</title>  
+<style>  
+  body { font-family: Arial, sans-serif; padding: 20px; }  
+  input { width: 50px; margin: 2px; }  
+  button { margin: 10px; }  
+  #status { margin-top: 20px; font-weight: bold; }  
+  #sequence { margin-top: 10px; }  
+  /* Deadlock background */  
+  .deadlock { background-color: #f8d7da; }  
+  /* Safe state background */  
+  .safe { background-color: #d4edda; }  
+  /* Modal styles */  
+  #deadlockModal {  
+    display: none; position: fixed; top: 50%; left: 50%;  
+    transform: translate(-50%, -50%);  
+    background: #fff; padding: 20px; border: 2px solid #000; z-index: 1000;  
+  }  
+  #modalOverlay {  
+    display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;  
+    background: rgba(0,0,0,0.5); z-index: 999;  
+  }  
+</style>  
+</head>  
+<body>  
+
+<h2>Resource Allocation Safety Algorithm</h2>  
+
+<h3>Enter Total Resources</h3>  
+<div id="totalResources">  
+  <label>Resources: </label>  
+  <input type="number" id="totalRes" min="0" />  
+</div>  
+
+<h3>Processes and Matrices</h3>  
+<div>  
+  <h4>Number of Processes:</h4>  
+  <input type="number" id="procCount" min="1" value="3" />  
+  <button onclick="generateTables()">Generate Tables</button>  
+</div>  
+
+<div id="matricesContainer"></div>  
+
+<div>  
+  <button onclick="runAlgorithm()">Run Algorithm</button>  
+  <button onclick="loadExample()">Example</button>  
+  <button onclick="reset()">Reset</button>  
+</div>  
+
+<div id="status"></div>  
+<div id="sequence"></div>  
+
+<!-- Modal for Deadlock Explanation -->  
+<div id="modalOverlay"></div>  
+<div id="deadlockModal">  
+  <h3>Deadlock Detected</h3>  
+  <p id="deadlockMessage"></p>  
+  <button onclick="closeModal()">Close</button>  
+</div>  
+
+<script>  
+let processCount = 3; // default  
+let totalResources = [];  
+let allocation = [];  
+let maximum = [];  
+
+function generateTables() {  
+  processCount = parseInt(document.getElementById('procCount').value);  
+  
+  // Generate input tables dynamically  
+  const container = document.getElementById('matricesContainer');  
+  container.innerHTML = '';  
+
+  // Resource input  
+  totalResourcesElement = document.createElement('input');  
+  totalResourcesElement.type = 'number';  
+  totalResourcesElement.id = 'totalRes';  
+  totalResourcesElement.min = 0;  
+  totalResourcesElement.value = document.getElementById('totalRes') ? document.getElementById('totalRes').value : '';  
+  container.appendChild(document.createTextNode('Total Resources: '));  
+  container.appendChild(totalResourcesElement);  
+
+  // Allocation matrix  
+  container.appendChild(document.createElement('h4')).textContent = 'Allocation Matrix';  
+  const allocTable = document.createElement('table');  
+  allocTable.border = 1;  
+  for (let i = 0; i < processCount; i++) {  
+    const row = allocTable.insertRow();  
+    row.insertCell().textContent = `P${i}`;  
+    for (let j = 0; j < 3; j++) {  
+      const cell = row.insertCell();  
+      cell.innerHTML = `<input type="number" min="0" id="alloc_${i}_${j}">`;  
+    }  
+  }  
+  container.appendChild(allocTable);  
+
+  // Max matrix  
+  container.appendChild(document.createElement('h4')).textContent = 'Max Matrix';  
+  const maxTable = document.createElement('table');  
+  maxTable.border = 1;  
+  for (let i = 0; i < processCount; i++) {  
+    const row = maxTable.insertRow();  
+    row.insertCell().textContent = `P${i}`;  
+    for (let j = 0; j < 3; j++) {  
+      const cell = row.insertCell();  
+      cell.innerHTML = `<input type="number" min="0" id="max_${i}_${j}">`;  
+    }  
+  }  
+  container.appendChild(maxTable);  
+}  
+
+// Load example data  
+function loadExample() {  
+  document.getElementById('totalRes').value = 10;  
+
+  const allocData = [  
+    [0, 1, 0],  
+    [2, 0, 0],  
+    [3, 0, 2]  
+  ];  
+
+  const maxData = [  
+    [7, 5, 3],  
+    [3, 2, 2],  
+    [9, 0, 2]  
+  ];  
+
+  // Generate tables again  
+  generateTables();  
+
+  // Fill in the data  
+  allocData.forEach((row, i) =>  
+    row.forEach((val, j) => {  
+      document.getElementById(`alloc_${i}_${j}`).value = val;  
+    })  
+  );  
+
+  maxData.forEach((row, i) =>  
+    row.forEach((val, j) => {  
+      document.getElementById(`max_${i}_${j}`).value = val;  
+    })  
+  );  
+}  
+
+// Reset all inputs  
+function reset() {  
+  document.getElementById('matricesContainer').innerHTML = '';  
+  document.getElementById('status').innerHTML = '';  
+  document.getElementById('sequence').innerHTML = '';  
+  document.getElementById('deadlockModal').style.display = 'none';  
+  document.getElementById('modalOverlay').style.display = 'none';  
+}  
+
+// Parse inputs and validate  
+function getInputs() {  
+  const totalResVal = parseInt(document.getElementById('totalRes').value);  
+  if (isNaN(totalResVal) || totalResVal < 0) {  
+    alert('Please enter a valid total resources value.');  
+    return null;  
+  }  
+  totalResources = Array.from({ length: 3 }, (_, j) => {  
+    const val = parseInt(document.getElementById(`totalRes`).value);  
+    return isNaN(val) || val < 0 ? 0 : val;  
+  });  
+
+  allocation = [];  
+  maximum = [];  
+
+  for (let i = 0; i < processCount; i++) {  
+    const allocRow = [];  
+    const maxRow = [];  
+    for (let j = 0; j < 3; j++) {  
+      const allocVal = parseInt(document.getElementById(`alloc_${i}_${j}`).value);  
+      const maxVal = parseInt(document.getElementById(`max_${i}_${j}`).value);  
+      if (isNaN(allocVal) || allocVal < 0 || isNaN(maxVal) || maxVal < 0) {  
+        alert(`Invalid input at Process ${i} Resource ${j}`);  
+        return null;  
+      }  
+      allocRow.push(allocVal);  
+      maxRow.push(maxVal);  
+    }  
+    allocation.push(allocRow);  
+    maximum.push(maxRow);  
+  }  
+
+  return { totalResources, allocation, maximum };  
+}  
+
+// Calculate need matrix  
+function calculateNeed() {  
+  const need = [];  
+  for (let i = 0; i < processCount; i++) {  
+    const needRow = [];  
+    for (let j = 0; j < 3; j++) {  
+      needRow.push(maximum[i][j] - allocation[i][j]);  
+    }  
+    need.push(needRow);  
+  }  
+  return need;  
+}  
+
+// Banker's Algorithm to check safety  
+function isSafeState() {  
+  const { totalResources, allocation, maximum } = getInputs();  
+  if (!totalResources) return;  
+
+  const need = calculateNeed();  
+
+  const work = [...totalResources];  
+  // Subtract allocated resources  
+  for (let j = 0; j < 3; j++) {  
+    for (let i = 0; i < processCount; i++) {  
+      work[j] -= allocation[i][j];  
+    }  
+  }  
+
+  const finish = Array(processCount).fill(false);  
+  const safeSeq = [];  
+
+  let progress = true;  
+  while (progress) {  
+    progress = false;  
+    for (let i = 0; i < processCount; i++) {  
+      if (!finish[i]) {  
+        // Check if needs can be satisfied  
+        let canFinish = true;  
+        for (let j = 0; j < 3; j++) {  
+          if (need[i][j] > work[j]) {  
+            canFinish = false;  
+            break;  
+          }  
+        }  
+        if (canFinish) {  
+          // Process can finish  
+          for (let j = 0; j < 3; j++) {  
+            work[j] += allocation[i][j];  
+          }  
+          finish[i] = true;  
+          safeSeq.push(i);  
+          progress = true;  
+        }  
+      }  
+    }  
+  }  
+
+  // Check if all finished  
+  const deadlock = finish.some(f => f === false);  
+  if (deadlock) {  
+    // Find affected processes  
+    const affected = [];  
+    for (let i = 0; i < processCount; i++) if (!finish[i]) affected.push(i);  
+    showDeadlock(affected);  
+    document.body.className = 'deadlock';  
+    document.getElementById('status').textContent = 'Deadlock detected!';  
+  } else {  
+    // Safe state  
+    document.body.className = 'safe';  
+    document.getElementById('status').textContent = 'System is in a safe state.';  
+    document.getElementById('sequence').textContent = 'Safe sequence: ' + safeSeq.map(p => `P${p}`).join(' -> ');  
+  }  
+}  
+
+// Show deadlock modal  
+function showDeadlock(affectedProcesses) {  
+  const message = `Processes involved in deadlock: ${affectedProcesses.map(p => `P${p}`).join(', ')}.   
+  Deadlock caused by insufficient resources to satisfy process requirements.   
+  To prevent deadlock, ensure proper resource allocation, avoid circular wait, and use resource ordering strategies.`;  
+  document.getElementById('deadlockMessage').textContent = message;  
+  document.getElementById('deadlockModal').style.display = 'block';  
+  document.getElementById('modalOverlay').style.display = 'block';  
+}  
+
+function closeModal() {  
+  document.getElementById('deadlockModal').style.display = 'none';  
+  document.getElementById('modalOverlay').style.display = 'none';  
+}  
+
+// Run algorithm  
+function runAlgorithm() {  
+  const inputs = getInputs();  
+  if (inputs) {  
+    isSafeState();  
+  }  
+}  
+</script>  
+
+</body>  
+</html>  
