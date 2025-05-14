@@ -19,10 +19,12 @@ A simple web-based simulation tool for the **Banker's Algorithm**, used in opera
 ## 📸 Screenshots
 
 in case of safe:
-![WhatsApp Image 2025-05-04 at 03 47 32_c8c09046](https://github.com/user-attachments/assets/812abb92-abe2-41bb-a645-c75801e353d7)
+
+![](https://github.com/user-attachments/assets/812abb92-abe2-41bb-a645-c75801e353d7)
 
 in case of deadlock:
-![WhatsApp Image 2025-05-04 at 03 46 58_0de77d6a](https://github.com/user-attachments/assets/ccc8145c-a016-4fd6-9f91-b7fc2cc504f8)
+
+![](https://github.com/user-attachments/assets/ccc8145c-a016-4fd6-9f91-b7fc2cc504f8)
 
 
 
@@ -55,6 +57,5 @@ in case of deadlock:
 
 ## 👨‍💻 Author
 
-Made by Hagar Khaled  
-[LinkedIn]([your-link](https://www.linkedin.com/in/hagar-helmy/)
+Made by [Hagar Helmy](https://www.linkedin.com/in/hagar-helmy/)
 
